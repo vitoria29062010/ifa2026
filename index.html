@@ -26,7 +26,218 @@
    O que poderia ser feito para melhorar a prevenção e o combate ao assédio no ambiente?
 </opition>
 </select>
-    </div>
-   </div>
+<div id="grafico">
+</div>
+<div class="qrcode-box">
+   <h2>Responder Pesquisa</h2>
+   <P>escanei o QRcode para responder o formulário </P>
+   <img sec="">
+</div>
+<div class="cards">
+   <h2>oq é assedio</h2>
+   <p>O assédio é qualquer conduta abusiva que viola a dignidade e o bem-estar de uma pessoa, manifestando-se frequentemente no ambiente de trabalho ou em espaços públicos. Ele pode ser moral — envolvendo humilhações e perseguições repetidas — ou sexual, quando o agressor busca vantagem intimidando a vítima.</p>
+</div>
+</div>
+<script>
+google.charts.load('current', {
+    packages: ['corechart']
+});
+
+google.charts.setOnLoadCallback(iniciarDashboard);
+
+const sheetURL =
+'https://docs.google.com/spreadsheets/d/e/2PACX-1vSAD-j7vzLTjXVse3wL9cB6KTf-V-7D1wYYZElpWaJJS_Fxy-2uKdsHajsB8LEjnGbA8JULgQVhMdnF/pub?output=csv&#39;;
+
+let respostas = [];
+
+async function iniciarDashboard() {
+    await carregarDados();
+
+    document
+        .getElementById('perguntaSelect')
+        .addEventListener('change', desenharGrafico);
+
+    // Atualiza automaticamente a cada 30 segundos
+    setInterval(carregarDados, 30000);
+}
+
+async function carregarDados() {
+
+    try {
+
+        const response = await fetch(sheetURL);
+
+        const csv = await response.text();
+
+        // Parser CSV CORRETO para Google Forms
+        respostas = parseCSV(csv);
+
+        // remove cabeçalho
+        respostas.shift();
+
+        desenharGrafico();
+
+    } catch (erro) {
+
+        console.error("Erro ao carregar CSV:", erro);
+
+    }
+}
+
+function parseCSV(texto) {
+
+    const linhas = [];
+    let linha = [];
+    let valor = '';
+    let dentroAspas = false;
+
+    for (let i = 0; i < texto.length; i++) {
+
+        const char = texto[i];
+        const prox = texto[i + 1];
+
+        if (char === '"') {
+
+            if (dentroAspas && prox === '"') {
+
+                valor += '"';
+                i++;
+
+            } else {
+
+                dentroAspas = !dentroAspas;
+            }
+
+        } else if (char === ',' && !dentroAspas) {
+
+            linha.push(valor);
+            valor = '';
+
+        } else if ((char === '\n' || char === '\r') && !dentroAspas) {
+
+            if (valor || linha.length) {
+
+                linha.push(valor);
+                linhas.push(linha);
+
+                linha = [];
+                valor = '';
+            }
+
+        } else {
+
+            valor += char;
+        }
+    }
+
+    if (valor || linha.length) {
+
+        linha.push(valor);
+        linhas.push(linha);
+    }
+
+    return linhas;
+}
+
+function desenharGrafico() {
+
+    const pergunta =
+    document.getElementById('perguntaSelect').value;
+
+    let contagem = {};
+
+    respostas.forEach(r => {
+
+        let resposta = '';
+
+        // COLUNA 4
+        if (pergunta === 'gosto') {
+
+            resposta = r[3]?.trim();
+
+            if (resposta) {
+
+                contagem[resposta] =
+                (contagem[resposta] || 0) + 1;
+            }
+        }
+
+        // COLUNA 5 (caixas de seleção)
+        if (pergunta === 'linguagens') {
+
+            resposta = r[4]?.trim();
+
+            if (resposta) {
+
+                resposta.split(',')
+                .forEach(item => {
+
+                    item = item.trim();
+
+                    if(item){
+
+                        contagem[item] =
+                        (contagem[item] || 0) + 1;
+                    }
+                });
+            }
+        }
+
+        // COLUNA 7
+        if (pergunta === 'algoritmo') {
+
+            resposta = r[6]?.trim();
+
+            if (resposta) {
+
+                contagem[resposta] =
+                (contagem[resposta] || 0) + 1;
+            }
+        }
+
+    });
+
+    const dados = [['Resposta', 'Quantidade']];
+
+    for (const chave in contagem) {
+
+        dados.push([
+            chave,
+            contagem[chave]
+        ]);
+    }
+
+    const data =
+    google.visualization.arrayToDataTable(dados);
+
+    const options = {
+
+        title:
+        document.getElementById(
+        'perguntaSelect'
+        ).selectedOptions[0].text,
+
+        pieHole: 0.35,
+
+        legend: {
+            position: 'right'
+        },
+
+        chartArea: {
+            width: '90%',
+            height: '80%'
+        }
+    };
+
+    const chart =
+    new google.visualization.PieChart(
+        document.getElementById('grafico')
+    );
+
+    chart.draw(data, options);
+}
+</script>
+
+   
 </body>
 </html>
